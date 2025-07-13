@@ -13,3 +13,4 @@ dataset_raw/*
 facenet_model/*
 output/*
 videos/*
+medium_facenet_tutorial/shape_predictor_68_face_landmarks.dat
