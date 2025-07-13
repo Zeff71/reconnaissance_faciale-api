@@ -1,39 +1,43 @@
-FROM tensorflow/tensorflow:latest
+# Utiliser une image Python légère
+FROM python:3.11-slim
 
-# --- Dépendances système ---
-RUN apt-get update -y && apt-get install -y \
-    git \
-    ffmpeg \
-    build-essential cmake pkg-config \
-    libjpeg-dev libtiff-dev libpng-dev \
-    libavcodec-dev libavformat-dev libswscale-dev libv4l-dev \
-    libxvidcore-dev libx264-dev \
-    libgtk-3-dev \
-    libatlas-base-dev gfortran \
-    python3-dev python3-pip python3-tk \
-    wget unzip vim \
-    && apt-get clean
+# Installer les outils nécessaires
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
 
-# --- OpenCV 4.5.5 via pip ---
-RUN pip install --no-cache-dir \
-    opencv-python==4.5.5.64 \
-    opencv-contrib-python==4.5.5.64
-
-# --- dlib  compilation ---
-RUN pip install numpy
-RUN git clone https://github.com/davisking/dlib.git /opt/dlib
-WORKDIR /opt/dlib
-RUN python setup.py install
-
-
-# --- Dépendances Python ---
-COPY requirements.txt /requirements.txt
-RUN pip install -r /requirements.txt
-
-# --- Fichiers de travail ---
-COPY . /app
+# Définir le répertoire de travail principal
 WORKDIR /app
 
+# Copier les fichiers de dépendances
+COPY requirements.txt .
 
-# CMD par défaut
-CMD ["python", "main.py"]
+# Installer les dépendances Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copier tout le projet dans l’image
+COPY . .
+
+# Télécharger le modèle shape_predictor_68_face_landmarks.dat
+RUN mkdir -p medium_facenet_tutorial && \
+    curl -L -o medium_facenet_tutorial/shape_predictor_68_face_landmarks.dat \
+    https://github.com/ageitgey/face_recognition_models/raw/master/face_recognition_models/models/shape_predictor_68_face_landmarks.dat
+
+# Télécharger et extraire le dataset LFW
+WORKDIR /app/dataset_raw
+RUN wget https://archive.org/download/lfw-dataset/lfw-dataset.zip && \
+    unzip lfw-dataset.zip -d /app/dataset_lfw && \
+    rm lfw-dataset.zip
+
+# Revenir au dossier principal et télécharger le modèle FaceNet
+WORKDIR /app
+RUN mkdir -p /app/facenet_model && \
+    python download_and_extract_model.py --model-dir /app/facenet_model
+
+# Exposer le port de l’API
+EXPOSE 8000
+
+# Démarrer l’application FastAPI
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
