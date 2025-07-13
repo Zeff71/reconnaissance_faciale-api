@@ -1,0 +1,15 @@
+env/
+data/*
+etc/*
+.idea/*
+.DS_STORE
+*.pyc
+**/__pycache__/
+
+!data/.gitkeep
+!etc/.gitkeep
+dataset_lfw/*
+dataset_raw/*
+facenet_model/*
+output/*
+videos/*
